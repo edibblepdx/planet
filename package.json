@@ -1,0 +1,31 @@
+{
+  "name": "planet",
+  "version": "1.0.0",
+  "description": "recursively subdivided 3D planet render",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edibblepdx/planet.git"
+  },
+  "keywords": [
+    "planet",
+    "webgl2"
+  ],
+  "author": "ethan dibble",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/edibblepdx/planet/issues"
+  },
+  "homepage": "https://github.com/edibblepdx/planet#readme",
+  "dependencies": {
+    "gl-matrix": "^3.4.3"
+  },
+  "devDependencies": {
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1"
+  }
+}
