@@ -7,6 +7,7 @@
 
 import { mat4, vec3, glMatrix } from 'gl-matrix';
 import { createShader, createProgram, createTexture } from './webgl-utils';
+import { Sphere } from './sphere';
 
 const vertexShaderSource = `#version 300 es
 precision mediump float;
@@ -19,7 +20,6 @@ out vec3 normal;
 
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
-uniform sampler2D uBump;
 
 void main() 
 {
@@ -37,41 +37,14 @@ in vec3 normal;
 out vec4 outColor;
 
 uniform sampler2D uTexture;
+uniform sampler2D uBump;
 
 void main() 
 {
+    vec3 nNormal = normalize(normal);
     vec4 texel = texture(uTexture, st);
     outColor = texel;
 }`;
-
-class Planet {
-    constructor(texPath, bmpPath) {
-        this.texPath = texPath;
-        this.bmpPath = bmpPath;
-        this.radius = 1.0;
-    }
-};
-
-const octahedronVertices = [
-    // position             // texture
-     0.0,   0.0,   1.0,     0.5,  1.0,
-     0.0,   0.0,  -1.0,     0.5,  0.0,
-     0.71,  0.71,  0.0,     0.0,  0.5,
-     0.71, -0.71,  0.0,     0.75, 0.5,
-    -0.71,  0.71,  0.0,     0.25, 0.5,
-    -0.71, -0.71,  0.0,     0.5,  0.5,
-];
-
-const octahedronIndices = [
-    0, 2, 4,
-    0, 4, 5,
-    0, 5, 3,
-    0, 3, 2,
-    1, 4, 2,
-    1, 5, 4,
-    1, 3, 5,
-    1, 2, 3,
-];
 
 function planet () {
     /** @type {?HTMLCanvasElement} */
@@ -86,6 +59,7 @@ function planet () {
     gl.clearColor(0.1, 0.1, 0.1, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
+    // settings
     gl.cullFace(gl.BACK);
     gl.frontFace(gl.CCW);
     gl.enable(gl.CULL_FACE);
@@ -104,19 +78,28 @@ function planet () {
     const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
     const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
     const uTexture = gl.getUniformLocation(shaderProgram, "uTexture");
-    if (!uModelViewMatrix || !uProjectionMatrix || !uTexture) {
+    //const uBump = gl.getUniformLocation(shaderProgram, "uBump");
+    if (!uModelViewMatrix || !uProjectionMatrix || !uTexture /*|| !uBump*/) {
         console.error("ERROR::SHADER::PROGRAM::UNIFORM_LOCATION");
         return;
     }
 
     // planet
-    let planetVertices = new Float32Array(octahedronVertices);
-    let planetIndicies = new Uint16Array(octahedronIndices);
 
+    // subdivide
+    // just work with javascript arrays then convert to strict arrays after
+    // ensure that edges are tracked
+    let planet = new Sphere();
+    planet.subdivide(5);
+
+    // buffer data
+    let planetVertices = new Float32Array(planet.vertices);
+    let planetIndicies = new Uint16Array(planet.indices);
+
+    // setup buffers
     const VAO = gl.createVertexArray();
     const VBO = gl.createBuffer();
     const EBO = gl.createBuffer();
-    VAO.is_loaded = false;
     gl.bindVertexArray(VAO);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, VBO);
@@ -139,18 +122,17 @@ function planet () {
     gl.enableVertexAttribArray(1);
 
     gl.bindVertexArray(null);
-    VAO.is_loaded = true;
 
+    // draw the scene
     let rotation = 0;
     let lastFrameTime = performance.now();
     const maxRotation = 2 * Math.PI;
-    // draw the scene
     function render() {
         const thisFrameTime = performance.now();
         const dt = (thisFrameTime - lastFrameTime) / 1000;
         lastFrameTime = thisFrameTime;
 
-        rotation += dt * glMatrix.toRadian(20);
+        rotation += dt * glMatrix.toRadian(30);
         if (rotation >= maxRotation) rotation -= maxRotation;
 
         canvas.width = canvas.clientWidth * devicePixelRatio;
@@ -162,9 +144,17 @@ function planet () {
 
         gl.useProgram(shaderProgram);
 
+        // texture
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.uniform1i(uTexture, 0);
+
+        /*
+        // bump
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, bump);
+        gl.uniform1i(uBump, 1);
+        */
 
         // matrix uniforms
         const matModelView  = mat4.create();
@@ -190,15 +180,11 @@ function planet () {
         gl.uniformMatrix4fv(uProjectionMatrix, false, matProjection);
 
         gl.bindVertexArray(VAO);
-        gl.drawElements(gl.TRIANGLES, 24, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.TRIANGLES, planet.indices.length, gl.UNSIGNED_SHORT, 0);
 
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);
-}
-
-function subdivide () {
-
 }
 
 try {
