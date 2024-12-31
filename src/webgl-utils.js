@@ -1,9 +1,15 @@
 // @ts-check
 
 /**
+ * @file webgl-utils.js
+ * @author ethan dibble
+ * @date 2024-12-30
+ * @description WebGL utility functions.
+ */
+
+/**
  * Creates and compiles a new shader.
  *
- * @export
  * @param {!WebGL2RenderingContext} gl
  * @param {!number} type
  * @param {!string} source
@@ -26,7 +32,6 @@ export function createShader (gl, type, source) {
 /**
  * Creates, links, and validates a new shader program.
  *
- * @export
  * @param {!WebGL2RenderingContext} gl
  * @param {!number} vertexShader
  * @param {!number} fragmentShader
@@ -59,7 +64,6 @@ export function createProgram (gl, vertexShader, fragmentShader) {
 /**
  * Creates a new texture object.
  * 
- * @export
  * @param {!WebGL2RenderingContext} gl 
  * @param {!string} src 
  * @returns {?WebGLTexture}

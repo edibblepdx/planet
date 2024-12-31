@@ -1,7 +1,12 @@
+/**
+ * @file planet.js
+ * @author ethan dibble
+ * @date 2024-12-30
+ * @description Recursively subdivided planet in WebGL2.
+ */
+
 import { mat4, vec3, glMatrix } from 'gl-matrix';
 import { createShader, createProgram, createTexture } from './webgl-utils';
-
-console.log('starting WebGL2');
 
 const vertexShaderSource = `#version 300 es
 precision mediump float;
@@ -68,8 +73,8 @@ const octahedronIndices = [
     1, 2, 3,
 ];
 
-function planet() {
-    /** @type {HTMLCanvasElement|null} */
+function planet () {
+    /** @type {?HTMLCanvasElement} */
     const canvas = document.getElementById('myCanvas');
     const gl = canvas.getContext('webgl2');
 
@@ -121,7 +126,8 @@ function planet() {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, planetIndicies, gl.STATIC_DRAW);
 
     // position attribute
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 
+    gl.vertexAttribPointer(
+        0, 3, gl.FLOAT, false, 
         5 * Float32Array.BYTES_PER_ELEMENT, 0);
     gl.enableVertexAttribArray(0);
 
@@ -135,8 +141,18 @@ function planet() {
     gl.bindVertexArray(null);
     VAO.is_loaded = true;
 
+    let rotation = 0;
+    let lastFrameTime = performance.now();
+    const maxRotation = 2 * Math.PI;
     // draw the scene
-    function render(dt) {
+    function render() {
+        const thisFrameTime = performance.now();
+        const dt = (thisFrameTime - lastFrameTime) / 1000;
+        lastFrameTime = thisFrameTime;
+
+        rotation += dt * glMatrix.toRadian(20);
+        if (rotation >= maxRotation) rotation -= maxRotation;
+
         canvas.width = canvas.clientWidth * devicePixelRatio;
         canvas.height = canvas.clientHeight * devicePixelRatio;
 
@@ -156,7 +172,7 @@ function planet() {
 
         mat4.lookAt(
             matModelView,
-            vec3.fromValues(-4, -4, 0),   // eye
+            vec3.fromValues(5, 0, 0),   // eye
             vec3.fromValues(0, 0, 0),   // look at
             vec3.fromValues(0, 0, 1)    // up
         );
@@ -166,6 +182,9 @@ function planet() {
             canvas.width / canvas.height,   // aspect ratio
             0.1, 100.0                      // near, far
         );
+
+        // rotate planet
+        mat4.rotateZ(matModelView, matModelView, rotation);
 
         gl.uniformMatrix4fv(uModelViewMatrix, false, matModelView);
         gl.uniformMatrix4fv(uProjectionMatrix, false, matProjection);
@@ -178,11 +197,12 @@ function planet() {
     requestAnimationFrame(render);
 }
 
-function subdivide() {
+function subdivide () {
 
 }
 
 try {
+    console.log('starting WebGL2');
     planet();
 }
 catch (e) {
