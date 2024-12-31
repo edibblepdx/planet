@@ -1,4 +1,5 @@
 import { mat4, vec3, glMatrix } from 'gl-matrix';
+import { createShader, createProgram, createTexture } from './webgl-utils';
 
 console.log('starting WebGL2');
 
@@ -13,6 +14,7 @@ out vec3 normal;
 
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
+uniform sampler2D uBump;
 
 void main() 
 {
@@ -84,58 +86,15 @@ function planet() {
     gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
 
-    // texture
-    const texture = gl.createTexture();
-    texture.is_loaded = false;
-    const image = new Image();
-    image.onload = function () {
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        console.log("texture loaded");
-        texture.is_loaded = true;
-    }
-    image.src = "earthmap1k.jpg";
+    // textures
+    const texture = createTexture(gl, "earthmap1k.jpg");
+    const bump    = createTexture(gl, "earthbump1k.jpg");
 
-    // vertex shader
-    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, vertexShaderSource);
-    gl.compileShader(vertexShader);
-    if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-        console.error("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
-            + gl.getShaderInfoLog(vertexShader));
-        return;
-    }
-    // fragment shader
-    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, fragmentShaderSource);
-    gl.compileShader(fragmentShader);
-    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-        console.error("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n"
-            + gl.getShaderInfoLog(fragmentShader));
-        return;
-    }
-    // link shaders
-    const shaderProgram = gl.createProgram();
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        console.error("ERROR::SHADER::PROGRAM::LINKING_FAILED\n"
-            + gl.getProgramInfoLog(shaderProgram));
-        return;
-    }
-    // validate shader program
-    gl.validateProgram(shaderProgram);
-    if (!gl.getProgramParameter(shaderProgram, gl.VALIDATE_STATUS)) {
-        console.error("ERROR::SHADER::PROGRAM::VALIDATION_FAILED\n"
-            + gl.getProgramInfoLog(shaderProgram));
-        return;
-    }
+    // shader program
+    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+    const shaderProgram = createProgram(gl, vertexShader, fragmentShader);
+
     // uniform locations
     const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
     const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
