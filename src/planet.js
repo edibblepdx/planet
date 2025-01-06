@@ -5,7 +5,7 @@
  * @description Recursively subdivided planet in WebGL2.
  */
 
-import { mat4, vec3, glMatrix } from 'gl-matrix';
+import { mat4, vec3, glMatrix, quat } from 'gl-matrix';
 import { createShader, createProgram, createTexture } from './webgl-utils';
 import { Sphere } from './sphere';
 
@@ -46,6 +46,43 @@ void main()
     outColor = texel;
 }`;
 
+// link so that I can reference back about quaternion order and stuff
+// https://stackoverflow.com/questions/9715776/using-quaternions-for-opengl-rotations
+
+// enum class of wrapper functions for rotation
+class Rotation {
+    static #orientation = quat.create();
+    static #speed = 60;
+
+    // snake moves opposite direction of rotation
+    static UP = (out, dt) => {
+        let rotation = quat.create();
+        quat.rotateY(rotation, rotation, dt * glMatrix.toRadian(this.#speed));
+        this.#applyRotation(out, rotation);
+    };
+    static DOWN = (out, dt) => {
+        let rotation = quat.create();
+        quat.rotateY(rotation, rotation, dt * -glMatrix.toRadian(this.#speed));
+        this.#applyRotation(out, rotation);
+    };
+    static LEFT = (out, dt) => {
+        let rotation = quat.create();
+        quat.rotateZ(rotation, rotation, dt * glMatrix.toRadian(this.#speed));
+        this.#applyRotation(out, rotation);
+    };
+    static RIGHT = (out, dt) => {
+        let rotation = quat.create();
+        quat.rotateZ(rotation, rotation, dt * -glMatrix.toRadian(this.#speed));
+        this.#applyRotation(out, rotation);
+    };
+    static #applyRotation (out, rotation) {
+        quat.multiply(this.#orientation, rotation, this.#orientation);
+        mat4.fromQuat(out, this.#orientation);
+    }
+}
+// default placeholder function
+let rotate = () => {};    
+
 function planet () {
     /** @type {?HTMLCanvasElement} */
     const canvas = document.getElementById('myCanvas');
@@ -66,11 +103,7 @@ function planet () {
     gl.enable(gl.DEPTH_TEST);
 
     // textures
-    //const texture = createTexture(gl, "earthmap1k.jpg");
-    //const texture = createTexture(gl, "ToastMapOfEarth.jpg");
-    //const texture = createTexture(gl, "octahedron.jpg");
-    const texture = createTexture(gl, "uvgrid.png");
-    const bump    = createTexture(gl, "earthbump1k.jpg");
+    const texture = createTexture(gl, "octahedron.jpg");
 
     // shader program
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
@@ -81,8 +114,7 @@ function planet () {
     const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
     const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
     const uTexture = gl.getUniformLocation(shaderProgram, "uTexture");
-    //const uBump = gl.getUniformLocation(shaderProgram, "uBump");
-    if (!uModelViewMatrix || !uProjectionMatrix || !uTexture /*|| !uBump*/) {
+    if (!uModelViewMatrix || !uProjectionMatrix || !uTexture) {
         console.error("ERROR::SHADER::PROGRAM::UNIFORM_LOCATION");
         return;
     }
@@ -135,9 +167,6 @@ function planet () {
         const dt = (thisFrameTime - lastFrameTime) / 1000;
         lastFrameTime = thisFrameTime;
 
-        rotation += dt * glMatrix.toRadian(30);
-        if (rotation >= maxRotation) rotation -= maxRotation;
-
         canvas.width = canvas.clientWidth * devicePixelRatio;
         canvas.height = canvas.clientHeight * devicePixelRatio;
 
@@ -152,19 +181,17 @@ function planet () {
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.uniform1i(uTexture, 0);
 
-        /*
-        // bump
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, bump);
-        gl.uniform1i(uBump, 1);
-        */
-
         // matrix uniforms
+        const matModel = mat4.create();
+        const matView = mat4.create();
         const matModelView  = mat4.create();
         const matProjection = mat4.create();
 
+        // rotate planet
+        rotate(matModel, dt);
+
         mat4.lookAt(
-            matModelView,
+            matView,
             vec3.fromValues(5, 0, 0),   // eye
             vec3.fromValues(0, 0, 0),   // look at
             vec3.fromValues(0, 0, 1)    // up
@@ -176,9 +203,7 @@ function planet () {
             0.1, 100.0                      // near, far
         );
 
-        // rotate planet
-        mat4.rotateZ(matModelView, matModelView, rotation);
-
+        mat4.multiply(matModelView, matView, matModel);
         gl.uniformMatrix4fv(uModelViewMatrix, false, matModelView);
         gl.uniformMatrix4fv(uProjectionMatrix, false, matProjection);
 
@@ -190,6 +215,29 @@ function planet () {
     requestAnimationFrame(render);
 }
 
+document.addEventListener ('keydown', (event) => {
+    switch (event.key) {
+        case 'ArrowUp':
+            //if (rotate == Rotation.DOWN) break;
+            rotate = Rotation.UP;
+            break;
+        case 'ArrowDown':
+            //if (rotate == Rotation.UP) break;
+            rotate = Rotation.DOWN;
+            break;
+        case 'ArrowLeft':
+            //if (rotate == Rotation.RIGHT) break;
+            rotate = Rotation.LEFT;
+            break;
+        case 'ArrowRight':
+            //if (rotate == Rotation.LEFT) break;
+            rotate = Rotation.RIGHT;
+            break;
+        default:
+            break;
+    }
+});
+
 try {
     console.log('starting WebGL2');
     planet();
@@ -197,3 +245,4 @@ try {
 catch (e) {
     console.log(`ERROR::JS::EXCEPTION\n${e}`);
 }
+
