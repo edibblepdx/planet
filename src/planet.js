@@ -187,12 +187,10 @@ function planet () {
         const matModelView  = mat4.create();
         const matProjection = mat4.create();
 
-        // rotate planet
-        rotate(matModel, dt);
-
+        rotate(matModel, dt),           // rotation quaternion
         mat4.lookAt(
             matView,
-            vec3.fromValues(5, 0, 0),   // eye
+            vec3.fromValues(4, 0, 0),   // eye
             vec3.fromValues(0, 0, 0),   // look at
             vec3.fromValues(0, 0, 1)    // up
         );
@@ -216,21 +214,22 @@ function planet () {
 }
 
 document.addEventListener ('keydown', (event) => {
+    // snake cannot uturn
     switch (event.key) {
         case 'ArrowUp':
-            //if (rotate == Rotation.DOWN) break;
+            if (rotate == Rotation.DOWN) break;
             rotate = Rotation.UP;
             break;
         case 'ArrowDown':
-            //if (rotate == Rotation.UP) break;
+            if (rotate == Rotation.UP) break;
             rotate = Rotation.DOWN;
             break;
         case 'ArrowLeft':
-            //if (rotate == Rotation.RIGHT) break;
+            if (rotate == Rotation.RIGHT) break;
             rotate = Rotation.LEFT;
             break;
         case 'ArrowRight':
-            //if (rotate == Rotation.LEFT) break;
+            if (rotate == Rotation.LEFT) break;
             rotate = Rotation.RIGHT;
             break;
         default:
