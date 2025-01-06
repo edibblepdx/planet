@@ -66,7 +66,10 @@ function planet () {
     gl.enable(gl.DEPTH_TEST);
 
     // textures
-    const texture = createTexture(gl, "earthmap1k.jpg");
+    //const texture = createTexture(gl, "earthmap1k.jpg");
+    //const texture = createTexture(gl, "ToastMapOfEarth.jpg");
+    //const texture = createTexture(gl, "octahedron.jpg");
+    const texture = createTexture(gl, "uvgrid.png");
     const bump    = createTexture(gl, "earthbump1k.jpg");
 
     // shader program
@@ -90,7 +93,7 @@ function planet () {
     // just work with javascript arrays then convert to strict arrays after
     // ensure that edges are tracked
     let planet = new Sphere();
-    planet.subdivide(5);
+    planet.subdivide(6);
 
     // buffer data
     let planetVertices = new Float32Array(planet.vertices);
