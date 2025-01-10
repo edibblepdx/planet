@@ -17,6 +17,7 @@ layout (location = 1) in vec2 vertexTexture;
 
 out vec2 st;
 out vec3 normal;
+out vec3 fragPos;
 
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
@@ -24,7 +25,8 @@ uniform mat4 uProjectionMatrix;
 void main() 
 {
     st = vertexTexture;
-    normal = vec3(uProjectionMatrix * uModelViewMatrix * vec4(vertexPosition, 0.0));
+    fragPos = vec3(uModelViewMatrix * vec4(vertexPosition, 1.0)); 
+    normal = vec3(uModelViewMatrix * vec4(vertexPosition, 0.0)); 
     gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(vertexPosition, 1.0);
 }`;
 
@@ -33,17 +35,27 @@ precision mediump float;
 
 in vec2 st;
 in vec3 normal;
+in vec3 fragPos;
 
 out vec4 outColor;
 
 uniform sampler2D uTexture;
 uniform sampler2D uBump;
+uniform vec3 uLightPos;
 
 void main() 
 {
-    vec3 nNormal = normalize(normal);
+    vec3 norm = normalize(normal);
+    vec3 lightDir = normalize(uLightPos - fragPos);
+
+    // lighting
+    vec3 ambient = vec3(0.3);
+    vec3 lightColor = vec3(1.0, 1.0, 1.0);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = vec3(diff);
+
     vec4 texel = texture(uTexture, st);
-    outColor = texel;
+    outColor = vec4((ambient + diffuse) * texel.rgb, 1.0);
 }`;
 
 // link so that I can reference back about quaternion order and stuff
@@ -114,10 +126,13 @@ function planet () {
     const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
     const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
     const uTexture = gl.getUniformLocation(shaderProgram, "uTexture");
-    if (!uModelViewMatrix || !uProjectionMatrix || !uTexture) {
+    const uLightPos = gl.getUniformLocation(shaderProgram, "uLightPos");
+    /*
+    if (!uModelViewMatrix || !uProjectionMatrix || !uTexture || !uLightPos) {
         console.error("ERROR::SHADER::PROGRAM::UNIFORM_LOCATION");
         return;
     }
+        */
 
     // planet
 
@@ -125,7 +140,7 @@ function planet () {
     // just work with javascript arrays then convert to strict arrays after
     // ensure that edges are tracked
     let planet = new Sphere();
-    planet.subdivide(6);
+    planet.subdivide(2);
 
     // buffer data
     let planetVertices = new Float32Array(planet.vertices);
@@ -159,9 +174,8 @@ function planet () {
     gl.bindVertexArray(null);
 
     // draw the scene
-    let rotation = 0;
     let lastFrameTime = performance.now();
-    const maxRotation = 2 * Math.PI;
+    const lightPos = vec3.fromValues(10.0, 10.0, 10.0);
     function render() {
         const thisFrameTime = performance.now();
         const dt = (thisFrameTime - lastFrameTime) / 1000;
@@ -204,6 +218,9 @@ function planet () {
         mat4.multiply(matModelView, matView, matModel);
         gl.uniformMatrix4fv(uModelViewMatrix, false, matModelView);
         gl.uniformMatrix4fv(uProjectionMatrix, false, matProjection);
+        let lp = vec3.create(); // transform light into view space
+        vec3.transformMat4(lp, lightPos, matView);
+        gl.uniform3fv(uLightPos, lp);
 
         gl.bindVertexArray(VAO);
         gl.drawElements(gl.TRIANGLES, planet.indices.length, gl.UNSIGNED_SHORT, 0);
