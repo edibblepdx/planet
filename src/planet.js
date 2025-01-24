@@ -8,55 +8,8 @@
 import { mat4, vec3, glMatrix, quat } from 'gl-matrix';
 import { createShader, createProgram, createTexture } from './webgl-utils';
 import { Sphere } from './sphere';
-
-const vertexShaderSource = `#version 300 es
-precision mediump float;
-
-layout (location = 0) in vec3 vertexPosition;
-layout (location = 1) in vec2 vertexTexture;
-
-out vec2 st;
-out vec3 normal;
-out vec3 fragPos;
-
-uniform mat4 uModelViewMatrix;
-uniform mat4 uProjectionMatrix;
-
-void main() 
-{
-    st = vertexTexture;
-    fragPos = vec3(uModelViewMatrix * vec4(vertexPosition, 1.0)); 
-    normal = vec3(uModelViewMatrix * vec4(vertexPosition, 0.0)); 
-    gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(vertexPosition, 1.0);
-}`;
-
-const fragmentShaderSource = `#version 300 es
-precision mediump float;
-
-in vec2 st;
-in vec3 normal;
-in vec3 fragPos;
-
-out vec4 outColor;
-
-uniform sampler2D uTexture;
-uniform sampler2D uBump;
-uniform vec3 uLightPos;
-
-void main() 
-{
-    vec3 norm = normalize(normal);
-    vec3 lightDir = normalize(uLightPos - fragPos);
-
-    // lighting
-    vec3 ambient = vec3(0.3);
-    vec3 lightColor = vec3(1.0, 1.0, 1.0);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = vec3(diff);
-
-    vec4 texel = texture(uTexture, st);
-    outColor = vec4((ambient + diffuse) * texel.rgb, 1.0);
-}`;
+import { vertexShaderSource } from './shader.vert';
+import { fragmentShaderSource } from './shader.frag';
 
 // link so that I can reference back about quaternion order and stuff
 // https://stackoverflow.com/questions/9715776/using-quaternions-for-opengl-rotations
@@ -66,36 +19,38 @@ class Rotation {
     static #orientation = quat.create();
     static #speed = 60;
 
-    // snake moves opposite direction of rotation
     static UP = (out, dt) => {
-        let rotation = quat.create();
-        quat.rotateY(rotation, rotation, dt * glMatrix.toRadian(this.#speed));
-        this.#applyRotation(out, rotation);
-    };
-    static DOWN = (out, dt) => {
         let rotation = quat.create();
         quat.rotateY(rotation, rotation, dt * -glMatrix.toRadian(this.#speed));
         this.#applyRotation(out, rotation);
     };
-    static LEFT = (out, dt) => {
+    static DOWN = (out, dt) => {
         let rotation = quat.create();
-        quat.rotateZ(rotation, rotation, dt * glMatrix.toRadian(this.#speed));
+        quat.rotateY(rotation, rotation, dt * glMatrix.toRadian(this.#speed));
         this.#applyRotation(out, rotation);
     };
-    static RIGHT = (out, dt) => {
+    static LEFT = (out, dt) => {
         let rotation = quat.create();
         quat.rotateZ(rotation, rotation, dt * -glMatrix.toRadian(this.#speed));
         this.#applyRotation(out, rotation);
     };
-    static #applyRotation (out, rotation) {
+    static RIGHT = (out, dt) => {
+        let rotation = quat.create();
+        quat.rotateZ(rotation, rotation, dt * glMatrix.toRadian(this.#speed));
+        this.#applyRotation(out, rotation);
+    };
+    static RESET = () => {
+        this.#orientation = quat.create();
+    };
+    static #applyRotation(out, rotation) {
         quat.multiply(this.#orientation, rotation, this.#orientation);
         mat4.fromQuat(out, this.#orientation);
     }
 }
 // default placeholder function
-let rotate = () => {};    
+let rotate = () => { };
 
-function planet () {
+function planet() {
     /** @type {?HTMLCanvasElement} */
     const canvas = document.getElementById('myCanvas');
     const gl = canvas.getContext('webgl2');
@@ -105,9 +60,9 @@ function planet () {
         return;
     }
 
-    gl.clearColor(0.1, 0.1, 0.1, 1.0);
+    gl.clearColor(0.1, 0.1, 0.2, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
+
     // settings
     gl.cullFace(gl.BACK);
     gl.frontFace(gl.CCW);
@@ -115,7 +70,7 @@ function planet () {
     gl.enable(gl.DEPTH_TEST);
 
     // textures
-    const texture = createTexture(gl, "octahedron.jpg");
+    const texture = createTexture(gl, "resources/8k_earth_daymap.jpg");
 
     // shader program
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
@@ -140,7 +95,7 @@ function planet () {
     // just work with javascript arrays then convert to strict arrays after
     // ensure that edges are tracked
     let planet = new Sphere();
-    planet.subdivide(2);
+    planet.subdivide(4);
 
     // buffer data
     let planetVertices = new Float32Array(planet.vertices);
@@ -154,20 +109,20 @@ function planet () {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, VBO);
     gl.bufferData(gl.ARRAY_BUFFER, planetVertices, gl.STATIC_DRAW);
-    
+
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, planetIndicies, gl.STATIC_DRAW);
 
     // position attribute
     gl.vertexAttribPointer(
-        0, 3, gl.FLOAT, false, 
+        0, 3, gl.FLOAT, false,
         5 * Float32Array.BYTES_PER_ELEMENT, 0);
     gl.enableVertexAttribArray(0);
 
     // texture attribute
     gl.vertexAttribPointer(
-        1, 2, gl.FLOAT, false, 
-        5 * Float32Array.BYTES_PER_ELEMENT, 
+        1, 2, gl.FLOAT, false,
+        5 * Float32Array.BYTES_PER_ELEMENT,
         3 * Float32Array.BYTES_PER_ELEMENT);
     gl.enableVertexAttribArray(1);
 
@@ -175,7 +130,7 @@ function planet () {
 
     // draw the scene
     let lastFrameTime = performance.now();
-    const lightPos = vec3.fromValues(10.0, 10.0, 10.0);
+    const lightPos = vec3.fromValues(10.0, -10.0, 5.0);
     function render() {
         const thisFrameTime = performance.now();
         const dt = (thisFrameTime - lastFrameTime) / 1000;
@@ -198,16 +153,16 @@ function planet () {
         // matrix uniforms
         const matModel = mat4.create();
         const matView = mat4.create();
-        const matModelView  = mat4.create();
+        const matModelView = mat4.create();
         const matProjection = mat4.create();
 
         rotate(matModel, dt),           // rotation quaternion
-        mat4.lookAt(
-            matView,
-            vec3.fromValues(4, 0, 0),   // eye
-            vec3.fromValues(0, 0, 0),   // look at
-            vec3.fromValues(0, 0, 1)    // up
-        );
+            mat4.lookAt(
+                matView,
+                vec3.fromValues(4, 0, 0),   // eye
+                vec3.fromValues(0, 0, 0),   // look at
+                vec3.fromValues(0, 0, 1)    // up
+            );
         mat4.perspective(
             matProjection,
             glMatrix.toRadian(45),          // fovy
@@ -230,24 +185,22 @@ function planet () {
     requestAnimationFrame(render);
 }
 
-document.addEventListener ('keydown', (event) => {
-    // snake cannot uturn
+document.addEventListener('keydown', (event) => {
     switch (event.key) {
         case 'ArrowUp':
-            if (rotate == Rotation.DOWN) break;
             rotate = Rotation.UP;
             break;
         case 'ArrowDown':
-            if (rotate == Rotation.UP) break;
             rotate = Rotation.DOWN;
             break;
         case 'ArrowLeft':
-            if (rotate == Rotation.RIGHT) break;
             rotate = Rotation.LEFT;
             break;
         case 'ArrowRight':
-            if (rotate == Rotation.LEFT) break;
             rotate = Rotation.RIGHT;
+            break;
+        case ' ':
+            rotate = Rotation.RESET;
             break;
         default:
             break;
@@ -261,4 +214,3 @@ try {
 catch (e) {
     console.log(`ERROR::JS::EXCEPTION\n${e}`);
 }
-
