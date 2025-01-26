@@ -71,6 +71,8 @@ function planet() {
 
     // textures
     const texture = createTexture(gl, "resources/8k_earth_daymap.jpg");
+    const normalMap = createTexture(gl, "resources/8k_earth_normal_map.png");
+    const specularMap = createTexture(gl, "resources/8k_earth_specular_map.png");
 
     // shader program
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
@@ -81,13 +83,16 @@ function planet() {
     const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
     const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
     const uTexture = gl.getUniformLocation(shaderProgram, "uTexture");
+    const uNormalMap = gl.getUniformLocation(shaderProgram, "uNormalMap");
+    const uSpecularMap = gl.getUniformLocation(shaderProgram, "uSpecularMap");
     const uLightPos = gl.getUniformLocation(shaderProgram, "uLightPos");
-    /*
-    if (!uModelViewMatrix || !uProjectionMatrix || !uTexture || !uLightPos) {
+    const uViewPos = gl.getUniformLocation(shaderProgram, "uViewPos");
+    if (!uModelViewMatrix || !uProjectionMatrix ||
+        !uTexture || !uNormalMap || !uSpecularMap ||
+        !uLightPos || !uViewPos) {
         console.error("ERROR::SHADER::PROGRAM::UNIFORM_LOCATION");
         return;
     }
-        */
 
     // planet
 
@@ -131,6 +136,7 @@ function planet() {
     // draw the scene
     let lastFrameTime = performance.now();
     const lightPos = vec3.fromValues(10.0, -10.0, 5.0);
+    const viewPos = vec3.fromValues(3.0, 0.0, 0.0);
     function render() {
         const thisFrameTime = performance.now();
         const dt = (thisFrameTime - lastFrameTime) / 1000;
@@ -145,10 +151,18 @@ function planet() {
 
         gl.useProgram(shaderProgram);
 
-        // texture
+        // textures
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.uniform1i(uTexture, 0);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, normalMap);
+        gl.uniform1i(uNormalMap, 1);
+
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, specularMap);
+        gl.uniform1i(uSpecularMap, 2);
 
         // matrix uniforms
         const matModel = mat4.create();
@@ -156,10 +170,10 @@ function planet() {
         const matModelView = mat4.create();
         const matProjection = mat4.create();
 
-        rotate(matModel, dt),           // rotation quaternion
+        rotate(matModel, dt),               // rotation quaternion
             mat4.lookAt(
                 matView,
-                vec3.fromValues(4, 0, 0),   // eye
+                viewPos,                    // eye
                 vec3.fromValues(0, 0, 0),   // look at
                 vec3.fromValues(0, 0, 1)    // up
             );
@@ -173,9 +187,14 @@ function planet() {
         mat4.multiply(matModelView, matView, matModel);
         gl.uniformMatrix4fv(uModelViewMatrix, false, matModelView);
         gl.uniformMatrix4fv(uProjectionMatrix, false, matProjection);
+
         let lp = vec3.create(); // transform light into view space
         vec3.transformMat4(lp, lightPos, matView);
         gl.uniform3fv(uLightPos, lp);
+
+        let vp = vec3.create();
+        vec3.transformMat4(vp, viewPos, matView);
+        gl.uniform3fv(uViewPos, vp);
 
         gl.bindVertexArray(VAO);
         gl.drawElements(gl.TRIANGLES, planet.indices.length, gl.UNSIGNED_SHORT, 0);
