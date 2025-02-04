@@ -6,6 +6,7 @@ precision mediump float;
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
 uniform sampler2D uSpecularMap;
+uniform sampler2D uClouds;
 uniform vec3 uLightPos;
 uniform vec3 uViewPos;
 
@@ -32,23 +33,25 @@ void main()
     normal = normalize(TBN * normal);
 
     // lighting
-    vec3 lightColor = vec3(1.0, 1.0, 1.0);
+    vec3 lightColor = vec3(0.8, 0.8, 0.8);
 
     // ambient
-    vec3 ambient = lightColor * vec3(0.3, 0.4, 0.6);
+    vec3 ambient = lightColor * vec3(0.2, 0.2, 0.3);
 
     // diffuse
     vec3 lightDir = normalize(uLightPos - fragPos);
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = lightColor * diff * vec3(1.0);
+    vec3 diffuse = lightColor * diff * vec3(1.0) * 0.8;
 
     // specular
     vec3 viewDir = normalize(uViewPos - fragPos);
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = max(dot(viewDir, reflectDir), 0.0);
-    vec3 specular = lightColor * spec * texture(uSpecularMap, st).rgb;
+    vec3 specular = lightColor * spec * texture(uSpecularMap, st).rgb * 0.8;
 
     // output
     vec4 texel = texture(uTexture, st);
-    outColor = vec4((ambient + diffuse + specular) * texel.rgb, 1.0);
+    vec4 clouds = texture(uClouds, st);
+    vec4 color = mix(texel, clouds, clouds.r);
+    outColor = vec4((ambient + diffuse + specular) * color.rgb, 1.0);
 }`;

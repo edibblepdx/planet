@@ -71,6 +71,7 @@ function planet() {
 
     // textures
     const texture = createTexture(gl, "resources/8k_earth_daymap.jpg");
+    const clouds = createTexture(gl, "resources/8k_earth_clouds.jpg");
     const normalMap = createTexture(gl, "resources/8k_earth_normal_map.png");
     const specularMap = createTexture(gl, "resources/8k_earth_specular_map.png");
 
@@ -83,12 +84,13 @@ function planet() {
     const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
     const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
     const uTexture = gl.getUniformLocation(shaderProgram, "uTexture");
+    const uClouds = gl.getUniformLocation(shaderProgram, "uClouds");
     const uNormalMap = gl.getUniformLocation(shaderProgram, "uNormalMap");
     const uSpecularMap = gl.getUniformLocation(shaderProgram, "uSpecularMap");
     const uLightPos = gl.getUniformLocation(shaderProgram, "uLightPos");
     const uViewPos = gl.getUniformLocation(shaderProgram, "uViewPos");
     if (!uModelViewMatrix || !uProjectionMatrix ||
-        !uTexture || !uNormalMap || !uSpecularMap ||
+        !uTexture || !uClouds || !uNormalMap || !uSpecularMap ||
         !uLightPos || !uViewPos) {
         console.error("ERROR::SHADER::PROGRAM::UNIFORM_LOCATION");
         return;
@@ -135,7 +137,8 @@ function planet() {
 
     // draw the scene
     let lastFrameTime = performance.now();
-    const lightPos = vec3.fromValues(10.0, -10.0, 5.0);
+    const lightPos = vec3.fromValues(50.0, -50.0, 5.0);
+    //const lightPos = vec3.fromValues(-50.0, 0.0, 0.0);
     const viewPos = vec3.fromValues(3.0, 0.0, 0.0);
     function render() {
         const thisFrameTime = performance.now();
@@ -163,6 +166,10 @@ function planet() {
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, specularMap);
         gl.uniform1i(uSpecularMap, 2);
+
+        gl.activeTexture(gl.TEXTURE3);
+        gl.bindTexture(gl.TEXTURE_2D, clouds);
+        gl.uniform1i(uClouds, 3);
 
         // matrix uniforms
         const matModel = mat4.create();
