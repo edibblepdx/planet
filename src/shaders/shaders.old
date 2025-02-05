@@ -1,0 +1,111 @@
+void main() 
+{
+    st = vertexPosition.xy;
+    if (vertexPosition.z < 0.0)
+    {
+        vec2 absolute = abs(st);
+        st = sign(st) * vec2(1.0 - absolute.y, 1.0 - absolute.x);
+    }
+    st = (st + 1.0) * 0.5;
+    normal = vec3(uProjectionMatrix * uModelViewMatrix * vec4(vertexPosition, 0.0));
+    gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(vertexPosition, 1.0);
+}`;
+
+const fragmentShaderSource = `#version 300 es
+precision mediump float;
+
+in vec2 st;
+in vec3 normal;
+
+out vec4 outColor;
+
+uniform sampler2D uTexture;
+uniform sampler2D uBump;
+
+void main() 
+{
+    vec3 nNormal = normalize(normal);
+    vec4 texel = texture(uTexture, st);
+    outColor = texel;
+}`;
+
+--------------------------------------------------------------
+jan 22, 2025
+--------------------------------------------------------------
+
+const vertexShaderSource = `#version 300 es
+precision mediump float;
+
+layout (location = 0) in vec3 vertexPosition;
+layout (location = 1) in vec2 vertexTexture;
+
+out vec2 st;
+out vec3 normal;
+out vec3 fragPos;
+
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix;
+
+void main() 
+{
+    st = vertexTexture;
+    fragPos = vec3(uModelViewMatrix * vec4(vertexPosition, 1.0)); 
+    normal = vec3(uModelViewMatrix * vec4(vertexPosition, 0.0)); 
+    gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(vertexPosition, 1.0);
+}`;
+
+const fragmentShaderSource = `#version 300 es
+precision mediump float;
+
+in vec2 st;
+in vec3 normal;
+in vec3 fragPos;
+
+out vec4 outColor;
+
+uniform sampler2D uTexture;
+uniform sampler2D uBump;
+uniform vec3 uLightPos;
+
+void main() 
+{
+    vec3 norm = normalize(normal);
+    vec3 lightDir = normalize(uLightPos - fragPos);
+
+    // lighting
+    vec3 ambient = vec3(0.3);
+    vec3 lightColor = vec3(1.0, 1.0, 1.0);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = vec3(diff);
+
+    vec4 texel = texture(uTexture, st);
+    outColor = vec4((ambient + diffuse) * texel.rgb, 1.0);
+}`;
+
+class Octahedron {
+    constructor () {
+        this.vertices = [
+            // position             // texture
+            0.0,   0.0,   1.0,      0.5,  0.5,  // 0 top
+            1.0,   0.0,   0.0,      1.0,  0.5,  // 1 
+            0.0,   1.0,   0.0,      0.5,  1.0,  // 2
+           -1.0,   0.0,   0.0,      0.0,  0.5,  // 3
+            0.0,  -1.0,   0.0,      0.5,  0.0,  // 4
+            0.0,   0.0,  -1.0,      1.0,  1.0,  // 5 bottom
+            0.0,   0.0,  -1.0,      0.0,  1.0,  // 6 bottom
+            0.0,   0.0,  -1.0,      0.0,  0.0,  // 7 bottom
+            0.0,   0.0,  -1.0,      1.0,  0.0,  // 8 bottom
+        ];
+        this.indices = [
+            0, 1, 2,
+            0, 2, 3,
+            0, 3, 4,
+            0, 4, 1,
+            5, 2, 1,
+            6, 3, 2,
+            7, 4, 3,
+            8, 1, 4,
+        ];
+        this.stride = 5;
+    }
+}

@@ -18,7 +18,7 @@ out vec4 outColor;
 
 #define M_PI 3.1415926535897932384626433832795
 
-void main() 
+void main()
 {
     // texture coordinate
     vec2 st = vec2(
