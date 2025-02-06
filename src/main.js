@@ -8,8 +8,10 @@
 import { mat4, vec3, glMatrix, quat } from 'gl-matrix';
 import { createShader, createProgram, createTexture } from './webgl-utils';
 import { Sphere } from './sphere';
-import { vertexShaderSource } from './shader.vert';
-import { fragmentShaderSource } from './shader.frag';
+//import { Planet } from './planet';
+import { Shader } from './shader';
+import { vertexShaderSource } from './shaders/surface.vert';
+import { fragmentShaderSource } from './shaders/surface.frag';
 
 // link so that I can reference back about quaternion order and stuff
 // https://stackoverflow.com/questions/9715776/using-quaternions-for-opengl-rotations
@@ -50,7 +52,7 @@ class Rotation {
 // default placeholder function
 let rotate = () => { };
 
-function planet() {
+function main() {
     /** @type {?HTMLCanvasElement} */
     const canvas = document.getElementById('myCanvas');
     const gl = canvas.getContext('webgl2');
@@ -69,6 +71,13 @@ function planet() {
     gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
 
+    // initialize planets
+    // ------------------
+
+    //Planet.initialize(gl);
+
+    //let earth = new Planet(gl);
+
     // ----------------
     // surface textures
     // ----------------
@@ -77,24 +86,32 @@ function planet() {
     const normalMap = createTexture(gl, "resources/8k_earth_normal_map.png");
     const specularMap = createTexture(gl, "resources/8k_earth_specular_map.png");
 
+    //const earthTexturePaths = {
+    //base: "resources/8k_earth_daymap.jpg",
+    //cloud: "resources/8k_earth_clouds.jpg",
+    //normal: "resources/8k_earth_normal_map.png",
+    //specular: "resources/8k_earth_specular_map.png",
+    //};
+
     // --------------
     // shader program
     // --------------
-    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-    const shaderProgram = createProgram(gl, vertexShader, fragmentShader);
+    const program = new Shader(gl, vertexShaderSource, fragmentShaderSource);
+    //const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+    //const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+    //const shaderProgram = createProgram(gl, vertexShader, fragmentShader);
 
     // -----------------
     // uniform locations
     // -----------------
-    const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
-    const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
-    const uTexture = gl.getUniformLocation(shaderProgram, "uTexture");
-    const uClouds = gl.getUniformLocation(shaderProgram, "uClouds");
-    const uNormalMap = gl.getUniformLocation(shaderProgram, "uNormalMap");
-    const uSpecularMap = gl.getUniformLocation(shaderProgram, "uSpecularMap");
-    const uLightPos = gl.getUniformLocation(shaderProgram, "uLightPos");
-    const uViewPos = gl.getUniformLocation(shaderProgram, "uViewPos");
+    const uModelViewMatrix = gl.getUniformLocation(program.ID, "uModelViewMatrix");
+    const uProjectionMatrix = gl.getUniformLocation(program.ID, "uProjectionMatrix");
+    const uTexture = gl.getUniformLocation(program.ID, "uTexture");
+    const uClouds = gl.getUniformLocation(program.ID, "uClouds");
+    const uNormalMap = gl.getUniformLocation(program.ID, "uNormalMap");
+    const uSpecularMap = gl.getUniformLocation(program.ID, "uSpecularMap");
+    const uLightPos = gl.getUniformLocation(program.ID, "uLightPos");
+    const uViewPos = gl.getUniformLocation(program.ID, "uViewPos");
     /*
     if (!uModelViewMatrix || !uProjectionMatrix ||
         !uTexture || !uClouds || !uNormalMap || !uSpecularMap ||
@@ -162,7 +179,8 @@ function planet() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.viewport(0, 0, canvas.width, canvas.height);
 
-        gl.useProgram(shaderProgram);
+        //gl.useProgram(shaderProgram);
+        program.use();
 
         // textures
         gl.activeTexture(gl.TEXTURE0);
@@ -245,7 +263,7 @@ document.addEventListener('keydown', (event) => {
 
 try {
     console.log('starting WebGL2');
-    planet();
+    main();
 }
 catch (e) {
     console.log(`ERROR::JS::EXCEPTION\n${e}`);
