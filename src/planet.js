@@ -5,8 +5,9 @@
  * @description WebGL2 Planet Class
  */
 
-import { createShader, createProgram, createTexture } from './webgl-utils';
+import { createTexture } from './webgl-utils';
 import { Sphere } from './sphere';
+import { Shader } from './shader';
 import { vertexShaderSource } from './shaders/surface.vert';
 import { fragmentShaderSource } from './shaders/surface.frag';
 
@@ -15,12 +16,13 @@ import { fragmentShaderSource } from './shaders/surface.frag';
 // 4 surface textures: base, cloud, normal, specular
 // 1 atmosphere texture: base
 // 2 culling faces: front, back
-// 2 radiuses: surface, atmosphere
+// 2 radiuses: surface, atmosphere -- I think make atmospher 1.05 or something of the base radius
 // 1 webgl context
 
 export class Planet {
     // all planets share static values
     static initialized = false;
+    static size = 0;
 
     // buffers
     static VAO = null;
@@ -31,35 +33,15 @@ export class Planet {
     static surfaceShader = null;
     static atmosphereShader = null;
 
-    // uniforms
-    static surfaceUniforms = {
-        ModelView,
-        Projection,
-        Texture,
-        Clouds,
-        Normal,
-        Specular,
-        LightPos,
-        ViewPos,
-    };
-    static atmosphereUniforms = {
-        ModelView,
-        Projection,
-        Texture,
-        LightPos,
-        ViewPos,
-    }
-
-    constructor(gl, radius = 1.0, texturePaths = {}, atmosphereColor) {
+    constructor(gl, texturePaths = {}) {
         /** @type {?HTMLCanvasElement} */
         this.gl = gl;
-        this.radius = radius;
 
         // textures
-        this.base = texturePaths.base ? createTexture(gl, "resources/8k_earth_daymap.jpg") : null;
-        this.clouds = texturePaths.clouds ? createTexture(gl, "resources/8k_earth_clouds.jpg") : null;
-        this.normal = texturePaths.normal ? createTexture(gl, "resources/8k_earth_normal_map.png") : null;
-        this.specular = texturePaths.specular ? createTexture(gl, "resources/8k_earth_specular_map.png") : null;
+        this.base = texturePaths.base ? createTexture(gl, texturePaths.base) : null;
+        this.clouds = texturePaths.clouds ? createTexture(gl, texturePaths.clouds) : null;
+        this.normal = texturePaths.normal ? createTexture(gl, texturePaths.normal) : null;
+        this.specular = texturePaths.specular ? createTexture(gl, texturePaths.specular) : null;
 
         // initialize buffers and shaders only once
         if (!Planet.initialized) Planet.initialize(gl);
@@ -67,31 +49,27 @@ export class Planet {
     static initialize(gl) {
         // Shader programs
         // ---------------
-        const surfaceVS = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-        const surfaceFS = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-        this.surfaceShader = createProgram(gl, surfaceVS, surfaceFS);
-
+        this.surfaceShader = new Shader(gl, vertexShaderSource, fragmentShaderSource);
         // !!! fix this when shader is written
-        //const atmosphereVS = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-        //const atmosphereFS = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-        //this.atmosphereShader = createProgram(gl, atmosphereVS, atmosphereFS);
+        //this.atmosphereShader = new Shader(gl, vertexShaderSource, fragmentShaderSource);
 
         // Uniform locations
         // -----------------
         // !! GLSL es 3.0 does not support interface blocks based on my testing
-        this.surfaceUniforms.ModelView = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
-        this.surfaceUniforms.Projection = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
-        this.surfaceUniforms.Texture = gl.getUniformLocation(shaderProgram, "uTexture");
-        this.surfaceUniforms.Clouds = gl.getUniformLocation(shaderProgram, "uClouds");
-        this.surfaceUniforms.Normal = gl.getUniformLocation(shaderProgram, "uNormalMap");
-        this.surfaceUniforms.Specular = gl.getUniformLocation(shaderProgram, "uSpecularMap");
-        this.surfaceUniforms.LightPos = gl.getUniformLocation(shaderProgram, "uLightPos");
-        this.surfaceUniforms.ViewPos = gl.getUniformLocation(shaderProgram, "uViewPos");
+        //this.surfaceUniforms.ModelView = gl.getUniformLocation(this.surfaceShader.ID, "uModelViewMatrix");
+        //this.surfaceUniforms.Projection = gl.getUniformLocation(this.surfaceShader.ID, "uProjectionMatrix");
+        //this.surfaceUniforms.Texture = gl.getUniformLocation(this.surfaceShader.ID, "uTexture");
+        //this.surfaceUniforms.Clouds = gl.getUniformLocation(this.surfaceShader.ID, "uClouds");
+        //this.surfaceUniforms.Normal = gl.getUniformLocation(this.surfaceShader.ID, "uNormalMap");
+        //this.surfaceUniforms.Specular = gl.getUniformLocation(this.surfaceShader.ID, "uSpecularMap");
+        //this.surfaceUniforms.LightPos = gl.getUniformLocation(this.surfaceShader.ID, "uLightPos");
+        //this.surfaceUniforms.ViewPos = gl.getUniformLocation(this.surfaceShader.ID, "uViewPos");
 
         // Vertex data
         // -----------
         let sphere = new Sphere();
         sphere.subdivide(4);
+        this.size = sphere.indices.length
 
         let planetVertices = new Float32Array(sphere.vertices);
         let planetIndicies = new Uint16Array(sphere.indices);
@@ -128,44 +106,36 @@ export class Planet {
         // 'this' is used within a static method
         this.initialized = true;
     }
-    draw(ModelView, Projection) {
+    draw(ModelView, Projection, LightPos, ViewPos) {
         if (!Planet.initialized) return;
 
         // draw atmosphere
         // ---------------
+        this.gl.cullFace(this.gl.FRONT);
 
         // draw surface
         // ------------
+        this.gl.cullFace(this.gl.BACK);
+
         // use surface shader
-        this.gl.useProgram(Planet.surfaceShader);
+        Planet.surfaceShader.use();
 
         // surface textures
-        this.gl.activeTexture(gl.TEXTURE0);
-        this.gl.bindTexture(gl.TEXTURE_2D, this.base);
-        this.gl.uniform1i(Planet.surfaceUniforms.Texture, 0);
+        Planet.surfaceShader.setTexture2D("uTexture", this.base, 0);
+        Planet.surfaceShader.setTexture2D("uNormalMap", this.normal, 1);
+        Planet.surfaceShader.setTexture2D("uSpecularMap", this.specular, 2);
+        Planet.surfaceShader.setTexture2D("uClouds", this.clouds, 3);
 
-        this.gl.activeTexture(gl.TEXTURE1);
-        this.gl.bindTexture(gl.TEXTURE_2D, this.normal);
-        this.gl.uniform1i(Planet.surfaceUniforms.Normal, 1);
-
-        this.gl.activeTexture(gl.TEXTURE2);
-        this.gl.bindTexture(gl.TEXTURE_2D, this.specular);
-        this.gl.uniform1i(Planet.surfaceUniforms.Specular, 2);
-
-        this.gl.activeTexture(gl.TEXTURE3);
-        this.gl.bindTexture(gl.TEXTURE_2D, this.clouds);
-        this.gl.uniform1i(Planet.surfaceUniforms.Clouds, 3);
-
-        // ModelView & Projection
-        this.gl.uniformMatrix4fv(Planet.surfaceUniforms.ModelView, false, ModelView);
-        this.gl.uniformMatrix4fv(Planet.surfaceUniforms.Projection, false, Projection);
+        // ModelView & Projection matrices
+        Planet.surfaceShader.setMat4("uModelViewMatrix", false, ModelView);
+        Planet.surfaceShader.setMat4("uProjectionMatrix", false, Projection);
 
         // light and view positions
+        Planet.surfaceShader.setVec3("uLightPos", LightPos);
+        Planet.surfaceShader.setVec3("uViewPos", ViewPos);
 
         // draw elements
-        // !!!!!!!!!!!!!!!!! length comes from sphere class !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // fix pls
         this.gl.bindVertexArray(Planet.VAO);
-        this.gl.drawElements(this.gl.TRIANGLES, planet.indices.length, this.gl.UNSIGNED_SHORT, 0);
+        this.gl.drawElements(this.gl.TRIANGLES, Planet.size, this.gl.UNSIGNED_SHORT, 0);
     }
 }
