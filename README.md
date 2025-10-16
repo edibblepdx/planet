@@ -1,2 +1,8 @@
 # planet
-I don't think this builds currently, but it's been a while. I was messing around with things.
+
+To bundle scripts
+```
+npx webpack build --config ./webpack.config.js
+```
+
+[Solar Textures](https://www.solarsystemscope.com/textures/)
