@@ -8,8 +8,10 @@
 import { createTexture } from './webgl-utils';
 import { Sphere } from './sphere';
 import { Shader } from './shader';
-import { vertexShaderSource } from './shaders/surface.vert';
-import { fragmentShaderSource } from './shaders/surface.frag';
+import { vertexShaderSource as surfaceVert } from './shaders/surface.vert';
+import { fragmentShaderSource as surfaceFrag } from './shaders/surface.frag';
+import { vertexShaderSource as atmosphereVert } from './shaders/atmosphere.vert';
+import { fragmentShaderSource as atmosphereFrag } from './shaders/atmosphere.frag';
 
 // 1 set of buffers: VAO, VBO, EBO
 // 2 shaders: surface, atmosphere
@@ -55,29 +57,8 @@ export class Planet {
   static initialize(gl) {
     // Shader programs
     // ---------------
-    this.surfaceShader = new Shader(gl, vertexShaderSource, fragmentShaderSource);
-    // !!! fix this when shader is written
-    //this.atmosphereShader = new Shader(gl, vertexShaderSource, fragmentShaderSource);
-
-    // Uniform locations
-    // -----------------
-    // !! GLSL es 3.0 does not support interface blocks based on my testing
-    //this.surfaceUniforms.ModelView =
-    //gl.getUniformLocation(this.surfaceShader.ID, "uModelViewMatrix");
-    //this.surfaceUniforms.Projection =
-    //gl.getUniformLocation(this.surfaceShader.ID, "uProjectionMatrix");
-    //this.surfaceUniforms.Texture =
-    //gl.getUniformLocation(this.surfaceShader.ID, "uTexture");
-    //this.surfaceUniforms.Clouds =
-    //gl.getUniformLocation(this.surfaceShader.ID, "uClouds");
-    //this.surfaceUniforms.Normal =
-    //gl.getUniformLocation(this.surfaceShader.ID, "uNormalMap");
-    //this.surfaceUniforms.Specular =
-    //gl.getUniformLocation(this.surfaceShader.ID, "uSpecularMap");
-    //this.surfaceUniforms.LightPos =
-    //gl.getUniformLocation(this.surfaceShader.ID, "uLightPos");
-    //this.surfaceUniforms.ViewPos =
-    //gl.getUniformLocation(this.surfaceShader.ID, "uViewPos");
+    this.surfaceShader = new Shader(gl, surfaceVert, surfaceFrag);
+    this.atmosphereShader = new Shader(gl, atmosphereVert, atmosphereFrag);
 
     // Vertex data
     // -----------
@@ -85,8 +66,8 @@ export class Planet {
     sphere.subdivide(4);
     this.size = sphere.indices.length
 
-    let planetVertices = new Float32Array(sphere.vertices);
-    let planetIndicies = new Uint16Array(sphere.indices);
+    let vertices = new Float32Array(sphere.vertices);
+    let indicies = new Uint16Array(sphere.indices);
 
     // Buffers
     // -------
@@ -97,10 +78,10 @@ export class Planet {
     gl.bindVertexArray(this.VAO);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.VBO);
-    gl.bufferData(gl.ARRAY_BUFFER, planetVertices, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.EBO);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, planetIndicies, gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicies, gl.STATIC_DRAW);
 
     // position attribute
     gl.vertexAttribPointer(
@@ -123,9 +104,30 @@ export class Planet {
   draw(Model, View, Projection, LightPos, ViewPos) {
     if (!Planet.initialized) return;
 
+    this.gl.enable(this.gl.BLEND)
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
     // draw atmosphere
     // ---------------
+    //this.gl.cullFace(this.gl.BACK);
     this.gl.cullFace(this.gl.FRONT);
+
+    // use atmosphere shader
+    Planet.atmosphereShader.use();
+
+    // Model, View, and Projection matrices
+    Planet.atmosphereShader.setMat4("uModelMatrix", false, Model);
+    Planet.atmosphereShader.setMat4("uViewMatrix", false, View);
+    Planet.atmosphereShader.setMat4("uProjectionMatrix", false, Projection);
+
+    // light and view positions
+    Planet.atmosphereShader.setVec3("uLightPos", LightPos);
+    Planet.atmosphereShader.setVec3("uViewPos", ViewPos);
+
+    // draw elements
+    this.gl.bindVertexArray(Planet.VAO);
+    this.gl.drawElements(
+      this.gl.TRIANGLES, Planet.size, this.gl.UNSIGNED_SHORT, 0);
 
     // draw surface
     // ------------
@@ -152,6 +154,7 @@ export class Planet {
 
     // draw elements
     this.gl.bindVertexArray(Planet.VAO);
-    this.gl.drawElements(this.gl.TRIANGLES, Planet.size, this.gl.UNSIGNED_SHORT, 0);
+    this.gl.drawElements(
+      this.gl.TRIANGLES, Planet.size, this.gl.UNSIGNED_SHORT, 0);
   }
 }

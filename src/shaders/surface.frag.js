@@ -64,17 +64,28 @@ void main()
     vec3 viewDir = normalize(uViewPos - fragPos);
 
     // diffuse (day/night sample)
-    float diff = saturate(dot(normal, lightDir));
-    diff = smoothstep(0.0, 0.4, diff);
+    float wrap = 0.1;
+    float ndotl = dot(normal, lightDir);
+    float diff = saturate((ndotl + wrap) / (1.0 + wrap));
 
     // specular
     vec3 halfDir = normalize(viewDir + lightDir);
     float spec = pow(saturate(dot(normal, halfDir)), 32.0);
-    vec3 specular = vec3(texture(uSpecularMap, st).r) * spec * 0.02;
+    vec3 specular = vec3(texture(uSpecularMap, st).r) * spec * 0.2;
 
-    // color mixing
+    // mimic light scattering
+    float fresnel = saturate(dot(normal, viewDir));
+    fresnel = smoothstep(1.0, 0.1, fresnel);
+    fresnel = pow(fresnel, 8.0) * diff;
+
+    float horizonScatter = (0.3 - ndotl) * (0.2 + ndotl);
+    horizonScatter = smoothstep(0.0, 1.0, horizonScatter);
+
+    // color mixing (surface)
     vec3 color = mix(night, day, diff);
     color = mix(color, vec3(1.0), clouds.r * diff);
+    color = mix(color, vec3(0.0, 0.5, 1.0), fresnel);
+    color += vec3(0.2, 0.05, 0.0) * horizonScatter;
     color += specular;
 
     outColor = vec4(linear_to_srgb(color), 1.0);

@@ -14,7 +14,7 @@ import { Planet } from './planet';
 // enum class of wrapper functions for rotation
 class Rotation {
   static #orientation = quat.create();
-  static #speed = 50;
+  static #speed = 60;
 
   static LEFT = (out, dt) => {
     let rotation = quat.create();
@@ -36,6 +36,9 @@ class Rotation {
     quat.rotateX(rotation, rotation, dt * glMatrix.toRadian(this.#speed));
     this.#applyRotation(out, rotation);
   };
+  static NONE = (out, _) => {
+    mat4.fromQuat(out, this.#orientation);
+  };
   static RESET = () => {
     this.#orientation = quat.create();
   };
@@ -45,7 +48,7 @@ class Rotation {
   }
 }
 // default placeholder function
-let rotate = () => { };
+let rotate = Rotation.NONE;
 
 function main() {
   // --------------------
@@ -94,6 +97,8 @@ function main() {
 
   let lastFrameTime = performance.now();
   function render() {
+    update();
+
     // delta time
     // ----------
     const thisFrameTime = performance.now();
@@ -142,6 +147,17 @@ function main() {
   requestAnimationFrame(render);
 }
 
+const keysDown = new Set();
+
+document.addEventListener('keydown', (event) => {
+  keysDown.add(event.key);
+});
+
+document.addEventListener('keyup', (event) => {
+  keysDown.delete(event.key);
+});
+
+/*
 document.addEventListener('keydown', (event) => {
   switch (event.key) {
     case 'ArrowUp':
@@ -163,6 +179,23 @@ document.addEventListener('keydown', (event) => {
       break;
   }
 });
+*/
+
+function update() {
+  if (keysDown.has('ArrowUp')) {
+    rotate = Rotation.UP;
+  } else if (keysDown.has('ArrowDown')) {
+    rotate = Rotation.DOWN;
+  } else if (keysDown.has('ArrowLeft')) {
+    rotate = Rotation.LEFT;
+  } else if (keysDown.has('ArrowRight')) {
+    rotate = Rotation.RIGHT;
+  } else if (keysDown.has(' ')) {
+    rotate = Rotation.RESET;
+  } else {
+    rotate = Rotation.NONE;
+  }
+}
 
 try {
   console.log('starting WebGL2');
