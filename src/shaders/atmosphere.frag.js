@@ -9,8 +9,6 @@ uniform vec3 uViewPos;
 in vec3 fragPos;
 in mat3 TBN;
 
-#define M_PI 3.1415926535897932384626433832795
-
 out vec4 outColor;
 
 float inverseLerp(float v, float minValue, float maxValue) {

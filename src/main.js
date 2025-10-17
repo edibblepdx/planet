@@ -86,6 +86,7 @@ function main() {
     clouds: "resources/8k_earth_clouds.jpg",
     normal: "resources/8k_earth_normal_map.png",
     specular: "resources/8k_earth_specular_map.png",
+    stars: "resources/8k_stars.jpg",
   };
   let earth = new Planet(gl, earthTexturePaths);
 
@@ -156,30 +157,6 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('keyup', (event) => {
   keysDown.delete(event.key);
 });
-
-/*
-document.addEventListener('keydown', (event) => {
-  switch (event.key) {
-    case 'ArrowUp':
-      rotate = Rotation.UP;
-      break;
-    case 'ArrowDown':
-      rotate = Rotation.DOWN;
-      break;
-    case 'ArrowLeft':
-      rotate = Rotation.LEFT;
-      break;
-    case 'ArrowRight':
-      rotate = Rotation.RIGHT;
-      break;
-    case ' ':
-      rotate = Rotation.RESET;
-      break;
-    default:
-      break;
-  }
-});
-*/
 
 function update() {
   if (keysDown.has('ArrowUp')) {

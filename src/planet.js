@@ -5,6 +5,7 @@
  * @description WebGL2 Planet Class
  */
 
+import { mat4 } from 'gl-matrix';
 import { createTexture } from './webgl-utils';
 import { Sphere } from './sphere';
 import { Shader } from './shader';
@@ -12,14 +13,8 @@ import { vertexShaderSource as surfaceVert } from './shaders/surface.vert';
 import { fragmentShaderSource as surfaceFrag } from './shaders/surface.frag';
 import { vertexShaderSource as atmosphereVert } from './shaders/atmosphere.vert';
 import { fragmentShaderSource as atmosphereFrag } from './shaders/atmosphere.frag';
-
-// 1 set of buffers: VAO, VBO, EBO
-// 2 shaders: surface, atmosphere
-// 4 surface textures: base, cloud, normal, specular
-// 1 atmosphere texture: base
-// 2 culling faces: front, back
-// 2 radiuses: surface, atmosphere -- I think make atmosphere 1.05 or something of the base radius
-// 1 webgl context
+import { vertexShaderSource as spaceVert } from './shaders/space.vert';
+import { fragmentShaderSource as spaceFrag } from './shaders/space.frag';
 
 export class Planet {
   // all planets share static values
@@ -34,6 +29,7 @@ export class Planet {
   // shaders
   static surfaceShader = null;
   static atmosphereShader = null;
+  static spaceShader = null;
 
   constructor(gl, texturePaths = {}) {
     /** @type {?HTMLCanvasElement} */
@@ -50,6 +46,8 @@ export class Planet {
       texturePaths.normal ? createTexture(gl, texturePaths.normal) : null;
     this.specular =
       texturePaths.specular ? createTexture(gl, texturePaths.specular) : null;
+    this.stars =
+      texturePaths.stars ? createTexture(gl, texturePaths.stars) : null;
 
     // initialize buffers and shaders only once
     if (!Planet.initialized) Planet.initialize(gl);
@@ -59,6 +57,7 @@ export class Planet {
     // ---------------
     this.surfaceShader = new Shader(gl, surfaceVert, surfaceFrag);
     this.atmosphereShader = new Shader(gl, atmosphereVert, atmosphereFrag);
+    this.spaceShader = new Shader(gl, spaceVert, spaceFrag);
 
     // Vertex data
     // -----------
@@ -107,9 +106,28 @@ export class Planet {
     this.gl.enable(this.gl.BLEND)
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
+    // draw space
+    // ----------
+    this.gl.cullFace(this.gl.FRONT);
+
+    // use space shader
+    Planet.spaceShader.use();
+
+    // space texture
+    Planet.spaceShader.setTexture2D("uStarTexture", this.stars, 0);
+
+    // Model, View, and Projection matrices
+    Planet.spaceShader.setMat4("uModelMatrix", false, mat4.create());
+    Planet.spaceShader.setMat4("uViewMatrix", false, View);
+    Planet.spaceShader.setMat4("uProjectionMatrix", false, Projection);
+
+    // draw elements
+    this.gl.bindVertexArray(Planet.VAO);
+    this.gl.drawElements(
+      this.gl.TRIANGLES, Planet.size, this.gl.UNSIGNED_SHORT, 0);
+
     // draw atmosphere
     // ---------------
-    //this.gl.cullFace(this.gl.BACK);
     this.gl.cullFace(this.gl.FRONT);
 
     // use atmosphere shader
